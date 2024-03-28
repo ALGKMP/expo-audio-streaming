@@ -1,46 +1,84 @@
 package expo.modules.audiostreaming
 
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 class ExpoAudioStreamingModule : Module() {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
+  private lateinit var player: ExoPlayer
+
   override fun definition() = ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ExpoAudioStreaming')` in JavaScript.
     Name("ExpoAudioStreaming")
 
-    // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
-    Constants(
-      "PI" to Math.PI
-    )
+//    OnCreate {
+//      try {
+//        player = appContext.reactContext?.let {
+//          ExoPlayer.Builder(it).build().apply {
+//            playWhenReady = true
+//          }
+//        }!!
+//      } catch (e: Exception) {
+//        e.printStackTrace()
+//      }
+//    }
 
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
+    // create an init function
+    AsyncFunction("init") { promise: Promise ->
+      try {
+        player = appContext.reactContext?.let {
+          ExoPlayer.Builder(it).build().apply {
+            playWhenReady = true
+            prepare()
+          }
+        }!!
 
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      "Hello world! 👋"
+        promise.resolve(null)
+      } catch (e: Exception) {
+        promise.reject("Error", "Error initializing audio player", e)
+      }
     }
 
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { value: String ->
-      // Send an event to JavaScript.
-      sendEvent("onChange", mapOf(
-        "value" to value
-      ))
+    AsyncFunction("appendAudio") { base64Audio: String, promise: Promise ->
+      try {
+        val uri = "data:audio/mp3;base64,$base64Audio"
+        val mediaItem = MediaItem.fromUri(uri)
+        player.addMediaItem(mediaItem)
+        promise.resolve(null)
+      } catch (e: Exception) {
+        promise.reject("Error", "Error appending audio", e)
+      }
     }
 
-    // Enables the module to be used as a native view. Definition components that are accepted as part of
-    // the view definition: Prop, Events.
-    View(ExpoAudioStreamingView::class) {
-      // Defines a setter for the `name` prop.
-      Prop("name") { view: ExpoAudioStreamingView, prop: String ->
-        println(prop)
+    AsyncFunction("play") { promise: Promise ->
+      try {
+        if (!player.isPlaying) {
+          player.play()
+        }
+        promise.resolve(null)
+      } catch (e: Exception) {
+        promise.reject("Error", "Error playing audio", e)
+      }
+    }
+
+    AsyncFunction("pause") { promise: Promise ->
+      try {
+        if (player.isPlaying) {
+          player.pause()
+        }
+        promise.resolve(null)
+      } catch (e: Exception) {
+        promise.reject("Error", "Error pausing audio", e)
+      }
+    }
+
+    AsyncFunction("reset") { promise: Promise ->
+      try {
+        player.stop()
+        promise.resolve(null)
+      } catch (e: Exception) {
+        promise.reject("Error", "Error resetting audio", e)
       }
     }
   }

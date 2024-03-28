@@ -1,26 +1,21 @@
-import { NativeModulesProxy, EventEmitter, Subscription } from 'expo-modules-core';
+import ExpoAudioStreamingModule from "./ExpoAudioStreamingModule";
 
-// Import the native module. On web, it will be resolved to ExpoAudioStreaming.web.ts
-// and on native platforms to ExpoAudioStreaming.ts
-import ExpoAudioStreamingModule from './ExpoAudioStreamingModule';
-import ExpoAudioStreamingView from './ExpoAudioStreamingView';
-import { ChangeEventPayload, ExpoAudioStreamingViewProps } from './ExpoAudioStreaming.types';
-
-// Get the native constant value.
-export const PI = ExpoAudioStreamingModule.PI;
-
-export function hello(): string {
-  return ExpoAudioStreamingModule.hello();
+export const init = async (): Promise<void> => {
+  return ExpoAudioStreamingModule.init();
 }
 
-export async function setValueAsync(value: string) {
-  return await ExpoAudioStreamingModule.setValueAsync(value);
-}
+export const appendAudio = async (base64Audio: string): Promise<void> => {
+  return ExpoAudioStreamingModule.appendAudio(base64Audio);
+};
 
-const emitter = new EventEmitter(ExpoAudioStreamingModule ?? NativeModulesProxy.ExpoAudioStreaming);
+export const playAudio = async (): Promise<void> => {
+  return ExpoAudioStreamingModule.play();
+};
 
-export function addChangeListener(listener: (event: ChangeEventPayload) => void): Subscription {
-  return emitter.addListener<ChangeEventPayload>('onChange', listener);
-}
+export const pauseAudio = async (): Promise<void> => {
+  return ExpoAudioStreamingModule.pause();
+};
 
-export { ExpoAudioStreamingView, ExpoAudioStreamingViewProps, ChangeEventPayload };
+export const resetPlayer = async (): Promise<void> => {
+  return ExpoAudioStreamingModule.reset();
+};
