@@ -14,7 +14,7 @@ export default function App() {
 
         await ExpoAudioStreaming.appendAudio(BASE_64);
         console.log("Audio appended");
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 0));
 
         await ExpoAudioStreaming.appendAudio(BASE_64);
         console.log("Audio appended 2");

@@ -1,5 +1,5 @@
 {
-  "name": "expo-audio-streaming",
+  "name": "expo-audio-streamer",
   "version": "0.1.0",
   "description": "My new module",
   "main": "build/index.js",
