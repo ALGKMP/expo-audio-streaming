@@ -1,44 +1,81 @@
+import AVFoundation
 import ExpoModulesCore
 
 public class ExpoAudioStreamingModule: Module {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
-  public func definition() -> ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ExpoAudioStreaming')` in JavaScript.
-    Name("ExpoAudioStreaming")
-
-    // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
-    Constants([
-      "PI": Double.pi
-    ])
-
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      return "Hello world! 👋"
+    private var queuePlayer: AVQueuePlayer?
+    private var itemsToPlay: [AVPlayerItem] = []
+    
+    public func definition() -> ModuleDefinition {
+        Name("ExpoAudioStreaming")
+        
+        AsyncFunction("init") { (promise: Promise) in
+            DispatchQueue.main.async {
+                self.queuePlayer = AVQueuePlayer(items: [])
+                self.queuePlayer?.actionAtItemEnd = .advance
+                promise.resolve(nil)
+            }
+        }
+        
+        AsyncFunction("appendAudio") { (base64Audio: String, promise: Promise) in
+            DispatchQueue.main.async {
+                guard let audioData = Data(base64Encoded: base64Audio, options: .ignoreUnknownCharacters),
+                      let tempUrl = self.writeDataToTemporaryFile(data: audioData) else {
+                    promise.reject("Error", "Invalid base64 audio")
+                    return
+                }
+                let asset = AVURLAsset(url: tempUrl)
+                let playerItem = AVPlayerItem(asset: asset)
+                self.itemsToPlay.append(playerItem)
+                
+                // If the player is already playing, just append to the queue
+                if self.queuePlayer?.rate != 0 {
+                    self.queuePlayer?.insert(playerItem, after: nil)
+                }
+                
+                promise.resolve(nil)
+            }
+        }
+        
+        AsyncFunction("play") { (promise: Promise) in
+            DispatchQueue.main.async {
+                // Check if the queuePlayer is already playing
+                if self.queuePlayer?.rate == 0 {
+                    if !self.itemsToPlay.isEmpty {
+                        // Add items to play in the queue and start playback
+                        self.itemsToPlay.forEach { self.queuePlayer?.insert($0, after: nil) }
+                        self.itemsToPlay.removeAll()
+                    }
+                    self.queuePlayer?.play()
+                }
+                promise.resolve(nil)
+            }
+        }
+        
+        AsyncFunction("pause") { (promise: Promise) in
+            DispatchQueue.main.async {
+                self.queuePlayer?.pause()
+                promise.resolve(nil)
+            }
+        }
+        
+        AsyncFunction("reset") { (promise: Promise) in
+            DispatchQueue.main.async {
+                self.queuePlayer?.pause()
+                self.queuePlayer?.removeAllItems()
+                self.itemsToPlay.removeAll()
+                promise.resolve(nil)
+            }
+        }
     }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { (value: String) in
-      // Send an event to JavaScript.
-      self.sendEvent("onChange", [
-        "value": value
-      ])
+    
+    private func writeDataToTemporaryFile(data: Data) -> URL? {
+        let tempUrl = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString + ".mp3")
+        do {
+            try data.write(to: tempUrl)
+            return tempUrl
+        } catch {
+            print("Error writing audio data to temporary file: \(error)")
+            return nil
+        }
     }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of the
-    // view definition: Prop, Events.
-    View(ExpoAudioStreamingView.self) {
-      // Defines a setter for the `name` prop.
-      Prop("name") { (view: ExpoAudioStreamingView, prop: String) in
-        print(prop)
-      }
-    }
-  }
 }
