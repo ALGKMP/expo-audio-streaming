@@ -12,18 +12,6 @@ class ExpoAudioStreamingModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ExpoAudioStreaming")
 
-//    OnCreate {
-//      try {
-//        player = appContext.reactContext?.let {
-//          ExoPlayer.Builder(it).build().apply {
-//            playWhenReady = true
-//          }
-//        }!!
-//      } catch (e: Exception) {
-//        e.printStackTrace()
-//      }
-//    }
-
     // create an init function
     AsyncFunction("init") { promise: Promise ->
       try {

@@ -3,54 +3,46 @@ import ExpoModulesCore
 
 public class ExpoAudioStreamingModule: Module {
     private var queuePlayer: AVQueuePlayer?
-    private var itemsToPlay: [AVPlayerItem] = []
     
     public func definition() -> ModuleDefinition {
         Name("ExpoAudioStreaming")
         
+        // Initialize the player
         AsyncFunction("init") { (promise: Promise) in
             DispatchQueue.main.async {
-                self.queuePlayer = AVQueuePlayer(items: [])
-                self.queuePlayer?.actionAtItemEnd = .advance
+                self.queuePlayer = AVQueuePlayer()
+                self.queuePlayer?.automaticallyWaitsToMinimizeStalling = true
                 promise.resolve(nil)
             }
         }
         
+        // Append audio from a base64 string
         AsyncFunction("appendAudio") { (base64Audio: String, promise: Promise) in
-            DispatchQueue.main.async {
-                guard let audioData = Data(base64Encoded: base64Audio, options: .ignoreUnknownCharacters),
-                      let tempUrl = self.writeDataToTemporaryFile(data: audioData) else {
-                    promise.reject("Error", "Invalid base64 audio")
-                    return
-                }
-                let asset = AVURLAsset(url: tempUrl)
-                let playerItem = AVPlayerItem(asset: asset)
-                self.itemsToPlay.append(playerItem)
-                
-                // If the player is already playing, just append to the queue
-                if self.queuePlayer?.rate != 0 {
-                    self.queuePlayer?.insert(playerItem, after: nil)
-                }
-                
-                promise.resolve(nil)
+            guard let data = Data(base64Encoded: base64Audio),
+                  let tempFileURL = self.writeDataToTemporaryFile(data: data) else {
+                promise.reject(NSError(domain: "ExpoAudioStreaming", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Invalid base64 string"]))
+                return
             }
-        }
-        
-        AsyncFunction("play") { (promise: Promise) in
+            
+            let playerItem = AVPlayerItem(url: tempFileURL)
             DispatchQueue.main.async {
-                // Check if the queuePlayer is already playing
-                if self.queuePlayer?.rate == 0 {
-                    if !self.itemsToPlay.isEmpty {
-                        // Add items to play in the queue and start playback
-                        self.itemsToPlay.forEach { self.queuePlayer?.insert($0, after: nil) }
-                        self.itemsToPlay.removeAll()
-                    }
+                self.queuePlayer?.insert(playerItem, after: nil)
+                if self.queuePlayer?.rate == 0 && self.queuePlayer?.currentItem != nil {
                     self.queuePlayer?.play()
                 }
                 promise.resolve(nil)
             }
         }
         
+        // Play the audio
+        AsyncFunction("play") { (promise: Promise) in
+            DispatchQueue.main.async {
+                self.queuePlayer?.play()
+                promise.resolve(nil)
+            }
+        }
+        
+        // Pause the audio
         AsyncFunction("pause") { (promise: Promise) in
             DispatchQueue.main.async {
                 self.queuePlayer?.pause()
@@ -58,11 +50,10 @@ public class ExpoAudioStreamingModule: Module {
             }
         }
         
+        // Reset the audio player
         AsyncFunction("reset") { (promise: Promise) in
             DispatchQueue.main.async {
-                self.queuePlayer?.pause()
                 self.queuePlayer?.removeAllItems()
-                self.itemsToPlay.removeAll()
                 promise.resolve(nil)
             }
         }
