@@ -18,8 +18,6 @@ export default function App() {
 
         await ExpoAudioStreaming.appendAudio(BASE_64);
         console.log("Audio appended 2");
-
-        await ExpoAudioStreaming.playAudio()
       } catch (error) {
         console.error(error);
       }
